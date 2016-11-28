@@ -30,6 +30,11 @@ public class Server extends JFrame {
 	private JTextField textField; // 사용할 PORT번호 입력
 	private JButton Start; // 서버를 실행시킨 버튼
 	JTextArea textArea; // 클라이언트 및 서버 메시지 출력
+	JTextArea chatArea;	// 채팅메시지 출력
+	
+	private int[] ready_flag;
+	private int[] Master_flag;
+	private int[] vc_index;
 	
 	private ServerSocket socket; //서버소켓
 	private Socket soc; // 연결소켓 
@@ -49,14 +54,14 @@ public class Server extends JFrame {
 	
 	private void init() { // GUI를 구성하는 메소드		
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		setBounds(100, 100, 280, 400);
+		setBounds(100, 100, 580, 400);
 		contentPane = new JPanel();
 		contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 		setContentPane(contentPane);
 		contentPane.setLayout(null);
 
 		JScrollPane js = new JScrollPane();				
-
+		
 		textArea = new JTextArea();
 		textArea.setColumns(20);
 		textArea.setRows(5);
@@ -64,6 +69,15 @@ public class Server extends JFrame {
 		contentPane.add(js);
 		js.setViewportView(textArea);
 
+		JScrollPane cs = new JScrollPane();
+		
+		chatArea = new JTextArea();
+		chatArea.setColumns(20);
+		chatArea.setRows(5);
+		cs.setBounds(280, 0 , 264, 254);
+		contentPane.add(cs);
+		cs.setViewportView(chatArea);
+		
 		textField = new JTextField("30000");
 		textField.setBounds(98, 264, 154, 37);
 		contentPane.add(textField);
@@ -73,11 +87,16 @@ public class Server extends JFrame {
 		lblNewLabel.setBounds(12, 264, 98, 37);
 		contentPane.add(lblNewLabel);
 		Start = new JButton("서버 실행");
-		
 		Start.setBounds(0, 325, 264, 37);
+		
+		JLabel chatLabel = new JLabel("Chat Log");
+		chatLabel.setBounds(360,244,100,37);
+		contentPane.add(chatLabel);
+		
 		contentPane.add(Start);
 		server_start();
 		textArea.setEditable(false); // textArea를 사용자가 수정 못하게끔 막는다.	
+		chatArea.setEditable(false);
 	}
 	
 	
@@ -110,15 +129,15 @@ public class Server extends JFrame {
 						soc = socket.accept(); // accept가 일어나기 전까지는 무한 대기중
 						textArea.append("사용자 접속!!\n");
 						
-					
 						
 						// 아이디 비밀번호 체크하기
 						
 						UserInfo user = new UserInfo(soc, vc); // 연결된 소켓 정보는 금방 사라지므로, user 클래스 형태로 객체 생성
 	                                // 매개변수로 현재 연결된 소켓과, 벡터를 담아둔다
 						vc.add(user); // 해당 벡터에 사용자 객체를 추가
-						
-						
+						if(vc.size()==1){
+							//Master_flag = 0;
+						}
 						
 						user.start(); // 만든 객체의 스레드 실행
 					} catch (IOException e) {
@@ -139,6 +158,7 @@ public class Server extends JFrame {
 		private Vector user_vc;
 		private String Nickname = "";
 		private User[] users;
+		private int Master_flag = -1;
 		
 		public UserInfo(Socket soc, Vector vc) // 생성자메소드
 		{
@@ -180,7 +200,7 @@ public class Server extends JFrame {
 				case "LOGIN":
 					int j=-1;
 					String Nickname = s.nextToken("$");
-					
+					System.out.println("your nickname : " + Nickname);
 					for(int i = 0;i<4;i++){
 						if(users[i].getId().equals(Nickname)){
 							j = i;
@@ -194,7 +214,6 @@ public class Server extends JFrame {
 							if(i==0){		//제일 먼저 접속한 사람 방장
 								send_Message("MASTER$");
 							}
-							
 						}
 					}
 					
@@ -217,15 +236,22 @@ public class Server extends JFrame {
 						user_socket.close();
 					}
 					break;
-				
+				case "START":
+					broad_cast("GAMESTART$");
+					break;
+				case "READY":
+					System.out.println("index = "+ vc.indexOf(this));
+					broad_cast(Protocol.GAMEREADY + vc.indexOf(this));
+					break;
+				case "CANCEL":
+					broad_cast(Protocol.CANCEL_READY+ this.Nickname);
+					break;
+					
 				case "CHAT":
 					broad_cast(msg);
 					//채팅
 					break;
-					
-				
 				}
-				
 			} catch (Exception e) {
 				textArea.append("스트림 셋팅 에러\n");
 				textArea.setCaretPosition(textArea.getText().length());
@@ -233,9 +259,16 @@ public class Server extends JFrame {
 		}
 
 		public void InMessage(String str) {
-			//textArea.append("사용자로부터 들어온 메세지 : " + str+"\n");
+			
+			StringTokenizer s = new StringTokenizer(str);
+			String Command = s.nextToken("$");
+			if(Command.equals("CHAT")){
+				chatArea.append(str + "\n");
+				chatArea.setCaretPosition(chatArea.getText().length());
+			}else{
 			textArea.append(str + "\n");
 			textArea.setCaretPosition(textArea.getText().length());
+			}
 			// 사용자 메세지 처리
 			broad_cast(str);
 		}
@@ -279,9 +312,15 @@ public class Server extends JFrame {
 				{
 					
 					try {
+					
 						dos.close();
 						dis.close();
 						user_socket.close();
+						
+					//	broad_cast("DISC$" + Nickname);	//Disconnect 알려줌
+					//	System.out.println("Disc : " +Nickname);
+						
+					//	send_Message("MASTER$");				//방장이 나갔다면 방장을 새로 설정
 						vc.removeElement( this ); // 에러가난 현재 객체를 벡터에서 지운다
 						textArea.append(vc.size() +" : 현재 벡터에 담겨진 사용자 수\n");
 						textArea.append("사용자 접속 끊어짐 자원 반납\n");
@@ -295,8 +334,6 @@ public class Server extends JFrame {
 				}// 바깥 catch문끝
 
 			}
-			
-			
 			
 		}// run메소드 끝
 
