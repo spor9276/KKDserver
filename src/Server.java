@@ -110,11 +110,16 @@ public class Server extends JFrame {
 						soc = socket.accept(); // accept가 일어나기 전까지는 무한 대기중
 						textArea.append("사용자 접속!!\n");
 						
+					
+						
 						// 아이디 비밀번호 체크하기
 						
 						UserInfo user = new UserInfo(soc, vc); // 연결된 소켓 정보는 금방 사라지므로, user 클래스 형태로 객체 생성
 	                                // 매개변수로 현재 연결된 소켓과, 벡터를 담아둔다
 						vc.add(user); // 해당 벡터에 사용자 객체를 추가
+						
+						
+						
 						user.start(); // 만든 객체의 스레드 실행
 					} catch (IOException e) {
 						textArea.append("!!!! accept 에러 발생... !!!!\n");
@@ -180,13 +185,16 @@ public class Server extends JFrame {
 						if(users[i].getId().equals(Nickname)){
 							j = i;
 							textArea.append(Protocol.LOGINSUCCESS + Nickname + "\n");
-							textArea.setCaretPosition(textArea.getText().length());	
+							textArea.setCaretPosition(textArea.getText().length());
+							
 							temp2 = Protocol.LOGINSUCCESS;
 							temp2 = temp2 + Nickname;
-							//System.out.println(temp2);
-							send_Message(temp2); // 연결된 사용자에게 정상접속을 알림
-							//send_Message("Login Success");
-							//user_socket.close();
+							send_Message(temp2);
+							
+							if(i==0){		//제일 먼저 접속한 사람 방장
+								send_Message("MASTER$");
+							}
+							
 						}
 					}
 					
