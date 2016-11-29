@@ -9,4 +9,5 @@ public class Protocol {
 	public static final String DISCONNECT = "DISC$";
 	public static final String GAMEREADY = "READY$";
 	public static final String CANCEL_READY = "CANCEL$";
+	
 }

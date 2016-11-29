@@ -61,7 +61,7 @@ public class Server extends JFrame {
 		contentPane.setLayout(null);
 
 		JScrollPane js = new JScrollPane();				
-		
+		//
 		textArea = new JTextArea();
 		textArea.setColumns(20);
 		textArea.setRows(5);
